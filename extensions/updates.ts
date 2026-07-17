@@ -10,23 +10,28 @@
 // Typed structurally on purpose (see omlx.ts): pi injects the real API via
 // jiti at runtime; no package.json/npm install needed for editor types.
 
-import type { ExtensionAPI, Outdated } from "./types.ts";
-import { newer, installedPackages, latestOf, checkOutdated } from "./packages.ts";
-import { changelogFor } from "./changelog.ts";
-import { formatUpdateNotice } from "./renderer.ts";
-import { ChangelogPager } from "./pager.ts";
+import type { ExtensionAPI, Outdated } from './types.ts';
+import {
+  newer,
+  installedPackages,
+  latestOf,
+  checkOutdated,
+} from './packages.ts';
+import { changelogFor } from './changelog.ts';
+import { formatUpdateNotice } from './renderer.ts';
+import { ChangelogPager } from './pager.ts';
 
 export default function (pi: ExtensionAPI) {
-  let cached: Outdated[] | null = null;
+  const cache: { current: Outdated[] | null } = { current: null };
 
-  pi.on("session_start", (event, ctx) => {
-    if (event.reason !== "startup") return;
+  pi.on('session_start', (event, ctx) => {
+    if (event.reason !== 'startup') return;
     // Fire-and-forget so 22 registry fetches never delay boot.
     void checkOutdated()
       .then((list) => {
-        cached = list;
+        cache.current = list;
         if (list.length && ctx.hasUI)
-          ctx.ui.notify(formatUpdateNotice(list), "info");
+          ctx.ui.notify(formatUpdateNotice(list), 'info');
       })
       .catch(() => {});
   });
@@ -35,64 +40,95 @@ export default function (pi: ExtensionAPI) {
   // min-release-age guard rejects young exact pins with ETARGET; the pin
   // is the verified control, so bypass it once on failure.
   // Returns an error string, or undefined on success.
-  const upgrade = async (o: Outdated): Promise<string | undefined> => {
-    const spec = `npm:${o.name}@${o.latest}`;
-    let r = await pi.exec("pi", ["install", spec], { timeout: 180000 });
-    if (r.code !== 0)
-      r = await pi.exec(
-        "env",
-        ["npm_config_min_release_age=0", "pi", "install", spec],
-        { timeout: 180000 },
-      );
-    if (r.code !== 0)
-      return `install failed — ${(r.stderr || r.stdout).trim().split("\n").pop()}`;
-    cached = (cached ?? []).filter((c) => c.name !== o.name);
+  const upgradePackage = async (
+    outdatedPackage: Outdated,
+  ): Promise<string | undefined> => {
+    const installSpecifier = `npm:${outdatedPackage.name}@${outdatedPackage.latest}`;
+    const initialInstallResult = await pi.exec(
+      'pi',
+      ['install', installSpecifier],
+      { timeout: 180000 },
+    );
+    const finalInstallResult =
+      initialInstallResult.code === 0
+        ? initialInstallResult
+        : await pi.exec(
+            'env',
+            ['npm_config_min_release_age=0', 'pi', 'install', installSpecifier],
+            { timeout: 180000 },
+          );
+    if (finalInstallResult.code !== 0)
+      return `install failed — ${(finalInstallResult.stderr || finalInstallResult.stdout).trim().split('\n').pop()}`;
+    cache.current = (cache.current ?? []).filter(
+      (cachedPackage) => cachedPackage.name !== outdatedPackage.name,
+    );
     return undefined;
   };
 
-  pi.registerCommand("updates", {
+  pi.registerCommand('updates', {
     description:
-      "Page release notes for outdated stack packages, upgrade or leave each (/updates [pkg])",
+      'Page release notes for outdated stack packages, upgrade or leave each (/updates [pkg])',
     handler: async (args, ctx) => {
-      const arg = args?.trim();
-      let list: Outdated[];
-      if (arg) {
-        const pkg = installedPackages().find(
-          (p) => p.name === arg || p.name.endsWith(`/${arg}`),
-        );
-        if (!pkg) {
-          ctx.ui.notify(`${arg}: not an installed stack package`, "warning");
-          return;
+      const requestedPackageName = args?.trim();
+
+      const getOutdatedList = async (): Promise<Outdated[] | null> => {
+        if (requestedPackageName) {
+          const installedPackage = installedPackages().find(
+            (pkg) =>
+              pkg.name === requestedPackageName ||
+              pkg.name.endsWith(`/${requestedPackageName}`),
+          );
+          if (!installedPackage) {
+            ctx.ui.notify(
+              `${requestedPackageName}: not an installed stack package`,
+              'warning',
+            );
+            return null;
+          }
+          const latestVersion = await latestOf(installedPackage.name);
+          if (!latestVersion) {
+            ctx.ui.notify(
+              `${installedPackage.name}: registry unreachable`,
+              'warning',
+            );
+            return null;
+          }
+          if (!newer(latestVersion, installedPackage.version)) {
+            ctx.ui.notify(
+              `${installedPackage.name} ${installedPackage.version} is up to date`,
+              'info',
+            );
+            return null;
+          }
+          return [
+            {
+              name: installedPackage.name,
+              current: installedPackage.version,
+              latest: latestVersion,
+            },
+          ];
         }
-        const latest = await latestOf(pkg.name);
-        if (!latest) {
-          ctx.ui.notify(`${pkg.name}: registry unreachable`, "warning");
-          return;
+        cache.current ??= await checkOutdated();
+        if (!cache.current.length) {
+          ctx.ui.notify('All stack packages are up to date', 'info');
+          return null;
         }
-        if (!newer(latest, pkg.version)) {
-          ctx.ui.notify(`${pkg.name} ${pkg.version} is up to date`, "info");
-          return;
-        }
-        list = [{ name: pkg.name, current: pkg.version, latest }];
-      } else {
-        cached ??= await checkOutdated();
-        if (!cached.length) {
-          ctx.ui.notify("All stack packages are up to date", "info");
-          return;
-        }
-        list = [...cached];
-      }
+        return [...cache.current];
+      };
+
+      const outdatedList = await getOutdatedList();
+      if (!outdatedList) return;
 
       // Prefetch every page up front so paging has no network gaps (the
       // editor would flash between dialogs while awaiting fetches).
       if (ctx.hasUI)
-        ctx.ui.notify(`Fetching ${list.length} changelog(s)…`, "info");
-      const pages = await Promise.all(
-        list.map(async (o) => ({
-          o,
-          md: await changelogFor(o).catch(
+        ctx.ui.notify(`Fetching ${outdatedList.length} changelog(s)…`, 'info');
+      const changelogPages = await Promise.all(
+        outdatedList.map(async (outdatedPackage) => ({
+          o: outdatedPackage,
+          md: await changelogFor(outdatedPackage).catch(
             () =>
-              `## ${o.name} ${o.current} → ${o.latest}\n\n_changelog fetch failed_`,
+              `## ${outdatedPackage.name} ${outdatedPackage.current} → ${outdatedPackage.latest}\n\n_changelog fetch failed_`,
           ),
         })),
       );
@@ -101,31 +137,37 @@ export default function (pi: ExtensionAPI) {
       // idle sendMessage appends immediately — "nextTurn" would queue it
       // invisibly until the next user prompt.)
       if (!ctx.hasUI) {
-        for (const p of pages)
+        changelogPages.forEach((pageContent) =>
           pi.sendMessage({
-            customType: "pi-package-updater-changelog",
-            content: p.md,
+            customType: 'pi-package-updater-changelog',
+            content: pageContent.md,
             display: true,
-          });
+          }),
+        );
         return;
       }
 
-      await ctx.ui.custom<void>((tui, theme, _kb, done) => {
-        const pager = new ChangelogPager(pages, tui, theme);
-        pager.onClose = () => done();
-        pager.onUpgrade = (o) => {
-          pager.setStatus(`Installing ${o.name}@${o.latest}…`, true);
-          void upgrade(o).then((err) =>
+      await ctx.ui.custom<void>(
+        (terminalUI, theme, _keyboard, finishExecution) => {
+          const pager = new ChangelogPager(changelogPages, terminalUI, theme);
+          pager.onClose = () => finishExecution();
+          pager.onUpgrade = (outdatedPackage) => {
             pager.setStatus(
-              err
-                ? `${o.name}: ${err}`
-                : `${o.name}@${o.latest} installed — restart pi to load`,
-              false,
-            ),
-          );
-        };
-        return pager;
-      });
+              `Installing ${outdatedPackage.name}@${outdatedPackage.latest}…`,
+              true,
+            );
+            void upgradePackage(outdatedPackage).then((errorMsg) =>
+              pager.setStatus(
+                errorMsg
+                  ? `${outdatedPackage.name}: ${errorMsg}`
+                  : `${outdatedPackage.name}@${outdatedPackage.latest} installed — restart pi to load`,
+                false,
+              ),
+            );
+          };
+          return pager;
+        },
+      );
     },
   });
 }

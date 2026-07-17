@@ -2,10 +2,12 @@
 // Every other module in extensions/ imports from here; this file has no
 // intra-project imports.
 
+import * as fs from "node:fs";
+import * as tuiLib from "@earendil-works/pi-tui";
+import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
+
 declare const process: { env: Record<string, string | undefined> };
 declare const require: (id: string) => unknown;
-
-// ── pi runtime API types ────────────────────────────────────────────
 
 export type Theme = { fg(color: string, text: string): string };
 export type Tui = {
@@ -15,7 +17,7 @@ export type Tui = {
 export type Ctx = {
   hasUI: boolean;
   ui: {
-    notify(msg: string, level?: "info" | "warning" | "error"): void;
+    notify(msg: string, level?: 'info' | 'warning' | 'error'): void;
     custom<T>(
       factory: (
         tui: Tui,
@@ -28,7 +30,7 @@ export type Ctx = {
 };
 export type ExtensionAPI = {
   on(
-    event: "session_start",
+    event: 'session_start',
     handler: (event: { reason: string }, ctx: Ctx) => void | Promise<void>,
   ): void;
   registerCommand(
@@ -50,37 +52,11 @@ export type ExtensionAPI = {
   ): Promise<{ stdout: string; stderr: string; code: number }>;
 };
 
-// ── domain type ─────────────────────────────────────────────────────
-
 export type Outdated = { name: string; current: string; latest: string };
 
-// ── runtime deps (resolved through pi's module graph via jiti) ──────
-
-export const fs = require("node:fs") as {
-  readFileSync(p: string, enc: "utf8"): string;
-  existsSync(p: string): boolean;
-};
-
-export const tuiLib = require("@earendil-works/pi-tui") as {
-  Markdown: new (
-    text: string,
-    paddingX: number,
-    paddingY: number,
-    theme: unknown,
-  ) => { render(width: number): string[] };
-  matchesKey(data: string, keyId: string): boolean;
-  truncateToWidth(s: string, width: number, ellipsis?: string): string;
-};
-
-export const { getMarkdownTheme } = require(
-  "@earendil-works/pi-coding-agent",
-) as {
-  getMarkdownTheme(): unknown;
-};
+export { fs, tuiLib, getMarkdownTheme };
 
 export const AGENT = `${process.env.HOME}/.pi/agent`;
-
-// ── generic helpers ─────────────────────────────────────────────────
 
 export const getJSON = (
   url: string,

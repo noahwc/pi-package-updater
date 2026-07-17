@@ -1,5 +1,5 @@
-import { describe, test } from "node:test";
-import assert from "node:assert/strict";
+import { describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 import {
   setupEnvironment,
   stubFetch,
@@ -8,11 +8,11 @@ import {
   releases,
   registryRoute,
   releasesRoute,
-} from "./setup.ts";
+} from './setup.ts';
 
 setupEnvironment();
 declare const require: (id: string) => any;
-const entrypoint = require("../extensions/updates.ts");
+const entrypoint = require('../extensions/updates.ts');
 const register = entrypoint.default;
 
 type Sent = { customType: string; content: string; display: boolean };
@@ -26,7 +26,7 @@ function makePi() {
     sendMessage: (msg: Sent) => calls.sent.push(msg),
     exec: async (cmd: string, args: string[]) => {
       calls.exec.push([cmd, ...args]);
-      return { stdout: "", stderr: "", code: 0 };
+      return { stdout: '', stderr: '', code: 0 };
     },
   };
   register(pi);
@@ -41,44 +41,44 @@ const notifyRecorder = () => {
   return { notices, notify: (m: string) => notices.push(m) };
 };
 
-describe("extension", () => {
-  test("startup notice lists outdated packages", async () => {
-    stubFetch(distTags({ foo: "1.2.0", "@scope/bar": "2.0.0" }));
+describe('extension', () => {
+  test('startup notice lists outdated packages', async () => {
+    stubFetch(distTags({ foo: '1.2.0', '@scope/bar': '2.0.0' }));
     const { sessionStart } = makePi();
     const { notices, notify } = notifyRecorder();
-    sessionStart()({ reason: "startup" }, { hasUI: true, ui: { notify } });
+    sessionStart()({ reason: 'startup' }, { hasUI: true, ui: { notify } });
     await new Promise((r) => setTimeout(r, 0));
     assert.equal(notices.length, 1);
-    assert.ok(notices[0].includes("foo 1.0.0→1.2.0"));
-    assert.ok(notices[0].includes("/updates to review"));
+    assert.ok(notices[0].includes('foo 1.0.0→1.2.0'));
+    assert.ok(notices[0].includes('/updates to review'));
   });
 
-  test("headless /updates <pkg> dumps the changelog into the session", async () => {
+  test('headless /updates <pkg> dumps the changelog into the session', async () => {
     stubFetch(
-      distTags({ foo: "2.0.0" }),
+      distTags({ foo: '2.0.0' }),
       registryRoute(registryDoc),
       releasesRoute(releases),
     );
     const { calls, handler } = makePi();
     const { notify } = notifyRecorder();
-    await handler()("foo", { hasUI: false, ui: { notify } });
+    await handler()('foo', { hasUI: false, ui: { notify } });
     assert.equal(calls.sent.length, 1);
-    assert.ok(calls.sent[0].content.startsWith("## foo 1.0.0 → 2.0.0"));
+    assert.ok(calls.sent[0].content.startsWith('## foo 1.0.0 → 2.0.0'));
   });
 
-  test("/updates warns on unknown or up-to-date packages", async () => {
-    stubFetch(distTags({ "@scope/bar": "2.0.0" }));
+  test('/updates warns on unknown or up-to-date packages', async () => {
+    stubFetch(distTags({ '@scope/bar': '2.0.0' }));
     const { handler } = makePi();
     const { notices, notify } = notifyRecorder();
-    await handler()("nope", { hasUI: false, ui: { notify } });
-    await handler()("bar", { hasUI: false, ui: { notify } }); // suffix match
-    assert.ok(notices[0].includes("not an installed stack package"));
-    assert.ok(notices[1].includes("is up to date"));
+    await handler()('nope', { hasUI: false, ui: { notify } });
+    await handler()('bar', { hasUI: false, ui: { notify } }); // suffix match
+    assert.ok(notices[0].includes('not an installed stack package'));
+    assert.ok(notices[1].includes('is up to date'));
   });
 
-  test("pager upgrade runs pi install, retries with min-release-age bypass", async () => {
+  test('pager upgrade runs pi install, retries with min-release-age bypass', async () => {
     stubFetch(
-      distTags({ foo: "2.0.0" }),
+      distTags({ foo: '2.0.0' }),
       registryRoute(registryDoc),
       releasesRoute(releases),
     );
@@ -100,15 +100,13 @@ describe("extension", () => {
           }),
       },
     };
-    const run = handler()("foo", ctx);
+    const run = handler()('foo', ctx);
     await new Promise((r) => setTimeout(r, 0)); // let prefetch settle
-    pager.handleInput("u");
+    pager.handleInput('u');
     await new Promise((r) => setTimeout(r, 0)); // let exec settle
-    assert.deepEqual(calls.exec, [["pi", "install", "npm:foo@2.0.0"]]);
-    assert.ok(
-      pager.render(80).at(-1)!.includes("installed"),
-    );
-    pager.handleInput("q");
+    assert.deepEqual(calls.exec, [['pi', 'install', 'npm:foo@2.0.0']]);
+    assert.ok(pager.render(80).at(-1)!.includes('installed'));
+    pager.handleInput('q');
     await run;
   });
 });
