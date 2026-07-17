@@ -4,6 +4,10 @@
   "description": "Startup update notifier + interactive changelog reviewer for outdated pi packages",
   "license": "MIT",
   "author": "Noah Clarke",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noahwc/pi-package-updater.git"
+  },
   "keywords": [
     "pi-package",
     "pi-extension",
