@@ -3,6 +3,12 @@
 
 import { getJSON, type Outdated } from './types.ts';
 import { newer } from './packages.ts';
+import createDOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
+import stripAnsi from 'strip-ansi';
+
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
 
 const getRepoParts = (url: string) => {
   const match = url.match(
@@ -49,7 +55,9 @@ export async function changelogFor(outdatedPackage: Outdated): Promise<string> {
         (intermediateVersion) =>
           [
             intermediateVersion,
-            String(releaseRecord.body || '').trim(),
+            stripAnsi(
+              DOMPurify.sanitize(String(releaseRecord.body || '').trim()),
+            ),
             tagName,
           ] as const,
       );

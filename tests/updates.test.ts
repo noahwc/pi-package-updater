@@ -64,7 +64,8 @@ describe('extension', () => {
     const { notify } = notifyRecorder();
     await handler()('foo', { hasUI: false, ui: { notify } });
     assert.equal(calls.sent.length, 1);
-    assert.ok(calls.sent[0].content.startsWith('## foo 1.0.0 → 2.0.0'));
+    assert.ok(calls.sent[0].content.includes('<untrusted_external_changelog>'));
+    assert.ok(calls.sent[0].content.includes('foo 1.0.0 → 2.0.0'));
   });
 
   test('/updates warns on unknown or up-to-date packages', async () => {
