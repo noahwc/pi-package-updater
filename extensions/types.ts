@@ -2,12 +2,11 @@
 // Every other module in extensions/ imports from here; this file has no
 // intra-project imports.
 
-import * as fs from "node:fs";
-import * as tuiLib from "@earendil-works/pi-tui";
-import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
+import * as fs from 'node:fs';
+import * as tuiLib from '@earendil-works/pi-tui';
+import { getMarkdownTheme } from '@earendil-works/pi-coding-agent';
 
 declare const process: { env: Record<string, string | undefined> };
-declare const require: (id: string) => unknown;
 
 export type Theme = { fg(color: string, text: string): string };
 export type Tui = {

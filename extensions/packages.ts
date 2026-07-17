@@ -24,37 +24,19 @@ export function installedPackages(): Array<{ name: string; version: string }> {
   const settingsData = JSON.parse(
     fs.readFileSync(`${AGENT}/settings.json`, 'utf8'),
   );
-  return (settingsData.packages ?? [])
-    .map((packageConfig: string | { source: string }) =>
-      typeof packageConfig === 'string' ? packageConfig : packageConfig.source,
-    )
-    .filter((packageSource: string) => packageSource.startsWith('npm:'))
-    .map((packageSource: string) => packageSource.slice(4))
-    .map((packageSource: string) => {
-      const lastAtIndex = packageSource.lastIndexOf('@');
-      return lastAtIndex > 0
-        ? packageSource.slice(0, lastAtIndex)
-        : packageSource;
-    })
-    .map((packageName: string) => ({
-      name: packageName,
-      packageJsonPath: `${AGENT}/npm/node_modules/${packageName}/package.json`,
-    }))
-    .filter(({ packageJsonPath }: { packageJsonPath: string }) =>
-      fs.existsSync(packageJsonPath),
-    )
-    .map(
-      ({
-        name,
-        packageJsonPath,
-      }: {
-        name: string;
-        packageJsonPath: string;
-      }) => ({
-        name,
-        version: JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')).version,
-      }),
-    );
+  return (settingsData.packages ?? []).flatMap(
+    (p: string | { source: string }) => {
+      const src = typeof p === 'string' ? p : p.source;
+      if (!src.startsWith('npm:')) return [];
+      const at = src.lastIndexOf('@');
+      const name = at > 3 ? src.slice(4, at) : src.slice(4);
+      const pkgPath = `${AGENT}/npm/node_modules/${name}/package.json`;
+      if (!fs.existsSync(pkgPath)) return [];
+      return [
+        { name, version: JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version },
+      ];
+    },
+  );
 }
 
 export async function latestOf(name: string): Promise<string | undefined> {

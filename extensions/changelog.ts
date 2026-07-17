@@ -5,19 +5,8 @@ import { getJSON, type Outdated } from './types.ts';
 import { newer } from './packages.ts';
 
 const getRepoParts = (url: string) => {
-  const parts = url.split('github.com');
-  if (parts.length < 2) return null;
-  const path =
-    parts[1].startsWith(':') || parts[1].startsWith('/')
-      ? parts[1].slice(1)
-      : parts[1];
-  const pathParts = path.split('/');
-  if (pathParts.length < 2) return null;
-  const owner = pathParts[0];
-  const name = pathParts[1].endsWith('.git')
-    ? pathParts[1].slice(0, -4)
-    : pathParts[1];
-  return [owner, name];
+  const m = url.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?(?:#.*)?$/);
+  return m ? [m[1], m[2]] : null;
 };
 
 export async function changelogFor(outdatedPackage: Outdated): Promise<string> {
@@ -48,22 +37,19 @@ export async function changelogFor(outdatedPackage: Outdated): Promise<string> {
       ).catch(() => null)
     : null;
 
-  const validMatches = (Array.isArray(githubReleases) ? githubReleases : [])
-    .flatMap((releaseRecord) =>
-      intermediateVersions.map((intermediateVersion) => ({
-        version: intermediateVersion,
-        tagName: String(releaseRecord.tag_name ?? ''),
-        releaseBody: String(releaseRecord.body ?? '').trim(),
-      })),
-    )
-    .filter(({ version, tagName }) => tagName.endsWith(version));
-
+  const validMatches = (
+    Array.isArray(githubReleases) ? githubReleases : []
+  ).flatMap((r) => {
+    const t = String(r.tag_name || '');
+    return intermediateVersions
+      .filter((v) => t.endsWith(v))
+      .map((v) => [v, String(r.body || '').trim(), t] as const);
+  });
   const releaseNotesByVersion = Object.fromEntries(
-    validMatches.map(({ version, releaseBody }) => [version, releaseBody]),
+    validMatches.map(([v, b]) => [v, b]),
   );
-  const firstMatchRecord = validMatches[0];
-  const derivedTagPrefix = firstMatchRecord
-    ? firstMatchRecord.tagName.slice(0, -firstMatchRecord.version.length)
+  const derivedTagPrefix = validMatches[0]
+    ? validMatches[0][2].slice(0, -validMatches[0][0].length)
     : null;
   const formatVersionTag = (versionString: string) =>
     `${derivedTagPrefix ?? 'v'}${versionString}`;
