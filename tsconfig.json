@@ -11,5 +11,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["extensions/**/*", "tests/**/*"]
+  "include": ["src/**/*", "tests/**/*"]
 }

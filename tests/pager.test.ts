@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { outdatedFoo } from './setup.ts';
 
 declare const require: (id: string) => any;
-const pagerMod = require('../extensions/pager.ts');
+const pagerMod = require('../src/pager.ts');
 const ChangelogPager = pagerMod.ChangelogPager;
 
 const mdOf = (n: number) =>
