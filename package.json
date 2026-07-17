@@ -20,7 +20,10 @@
     "access": "public"
   },
   "scripts": {
-    "test": "NODE_PATH=tests/stubs npx tsx --test tests/*.test.ts"
+    "test": "NODE_PATH=tests/stubs npx tsx --test tests/*.test.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
   },
   "pi": {
     "extensions": [
@@ -32,11 +35,20 @@
     "@earendil-works/pi-tui": "*"
   },
   "peerDependenciesMeta": {
-    "@earendil-works/pi-coding-agent": { "optional": true },
-    "@earendil-works/pi-tui": { "optional": true }
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "@earendil-works/pi-tui": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "typescript": "^6.0.0",
-    "tsx": "^4.23.0"
+    "@eslint/js": "9.39.5",
+    "@types/node": "26.1.1",
+    "eslint": "9.39.5",
+    "globals": "17.7.0",
+    "tsx": "4.23.0",
+    "typescript": "6.0.0",
+    "typescript-eslint": "8.64.0"
   }
 }
