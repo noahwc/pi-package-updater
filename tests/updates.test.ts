@@ -93,7 +93,7 @@ describe('extension', () => {
         custom: (factory: any) =>
           new Promise((resolve) => {
             pager = factory(
-              { terminal: { rows: 16, columns: 80 }, requestRender() { } },
+              { terminal: { rows: 16, columns: 80 }, requestRender() {} },
               { fg: (_c: string, t: string) => t },
               {},
               resolve,
@@ -112,11 +112,30 @@ describe('extension', () => {
   });
 
   test('pager upgrade fallback handles failure', async () => {
-    stubFetch(distTags({ foo: '2.0.0' }), registryRoute(registryDoc), releasesRoute(releases));
+    stubFetch(
+      distTags({ foo: '2.0.0' }),
+      registryRoute(registryDoc),
+      releasesRoute(releases),
+    );
     const { pi, handler } = makePi();
     pi.exec = async () => ({ stdout: '', stderr: 'fallback error', code: 1 });
     let pager: any;
-    const run = handler()('foo', { hasUI: true, ui: { notify: () => {}, custom: (f: any) => new Promise(r => pager = f({ terminal: { rows: 16, columns: 80 }, requestRender() { } }, { fg: (_c: string, t: string) => t }, {}, r)) } });
+    const run = handler()('foo', {
+      hasUI: true,
+      ui: {
+        notify: () => {},
+        custom: (f: any) =>
+          new Promise(
+            (r) =>
+              (pager = f(
+                { terminal: { rows: 16, columns: 80 }, requestRender() {} },
+                { fg: (_c: string, t: string) => t },
+                {},
+                r,
+              )),
+          ),
+      },
+    });
     await new Promise((r) => setTimeout(r, 0));
     pager.handleInput('u');
     await new Promise((r) => setTimeout(r, 0));
@@ -126,11 +145,32 @@ describe('extension', () => {
   });
 
   test('pager upgrade catches exceptions', async () => {
-    stubFetch(distTags({ foo: '2.0.0' }), registryRoute(registryDoc), releasesRoute(releases));
+    stubFetch(
+      distTags({ foo: '2.0.0' }),
+      registryRoute(registryDoc),
+      releasesRoute(releases),
+    );
     const { pi, handler } = makePi();
-    pi.exec = async () => { throw new Error('exec boom'); };
+    pi.exec = async () => {
+      throw new Error('exec boom');
+    };
     let pager: any;
-    const run = handler()('foo', { hasUI: true, ui: { notify: () => {}, custom: (f: any) => new Promise(r => pager = f({ terminal: { rows: 16, columns: 80 }, requestRender() { } }, { fg: (_c: string, t: string) => t }, {}, r)) } });
+    const run = handler()('foo', {
+      hasUI: true,
+      ui: {
+        notify: () => {},
+        custom: (f: any) =>
+          new Promise(
+            (r) =>
+              (pager = f(
+                { terminal: { rows: 16, columns: 80 }, requestRender() {} },
+                { fg: (_c: string, t: string) => t },
+                {},
+                r,
+              )),
+          ),
+      },
+    });
     await new Promise((r) => setTimeout(r, 0));
     pager.handleInput('u');
     await new Promise((r) => setTimeout(r, 0));
@@ -140,7 +180,9 @@ describe('extension', () => {
   });
 
   test('registry unreachable for specific package', async () => {
-    (globalThis as any).fetch = async () => { throw new Error('offline'); };
+    (globalThis as any).fetch = async () => {
+      throw new Error('offline');
+    };
     const { handler } = makePi();
     const { notices, notify } = notifyRecorder();
     await handler()('foo', { hasUI: false, ui: { notify } });
