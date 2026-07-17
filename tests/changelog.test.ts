@@ -43,4 +43,27 @@ describe('changelogFor', () => {
       md.includes('https://www.npmjs.com/package/foo?activeTab=versions'),
     );
   });
+  test('handles malformed registry document', async () => {
+    stubFetch(registryRoute({}));
+    const md = await changelogFor(outdatedFoo);
+    assert.ok(md.includes('No GitHub release notes found'));
+  });
+  test('handles github fetch rejection', async () => {
+    stubFetch(registryRoute(registryDoc), (url: string) => {
+      if (url.includes('api.github.com')) throw new Error('github down');
+      return undefined;
+    });
+    const md = await changelogFor(outdatedFoo);
+    assert.ok(md.includes('No GitHub release notes found'));
+  });
+  test('handles malformed github response', async () => {
+    stubFetch(registryRoute(registryDoc), releasesRoute({ some: 'object' }));
+    const md = await changelogFor(outdatedFoo);
+    assert.ok(md.includes('No GitHub release notes found'));
+  });
+  test('handles release without tag name or body', async () => {
+    stubFetch(registryRoute(registryDoc), releasesRoute([{}]));
+    const md = await changelogFor(outdatedFoo);
+    assert.ok(md.includes('_no release notes_'));
+  });
 });

@@ -28,6 +28,28 @@ describe('installedPackages', () => {
       { name: '@scope/bar', version: '2.0.0' },
     ]);
   });
+  test('ignores missing versions or unreadable files', () => {
+    // Add a package without package.json to test the error block
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const settingsPath = path.join(process.env.HOME, '.pi', 'agent', 'settings.json');
+    const originalSettings = fs.readFileSync(settingsPath, 'utf8');
+    
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      packages: ['npm:no-pkg-json@1.0.0', 'npm:bad-version@1.0.0']
+    }));
+    
+    fs.mkdirSync(path.join(process.env.HOME, '.pi', 'agent', 'npm', 'node_modules', 'bad-version'), { recursive: true });
+    fs.writeFileSync(
+      path.join(process.env.HOME, '.pi', 'agent', 'npm', 'node_modules', 'bad-version', 'package.json'),
+      JSON.stringify({ name: 'bad-version' }) // no version
+    );
+    
+    assert.deepEqual(installedPackages(), []);
+    
+    // cleanup
+    fs.writeFileSync(settingsPath, originalSettings);
+  });
 });
 
 describe('latestOf', () => {

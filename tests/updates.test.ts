@@ -34,6 +34,7 @@ function makePi() {
     calls,
     handler: () => command.handler,
     sessionStart: () => sessionStart,
+    pi,
   };
 }
 const notifyRecorder = () => {
@@ -108,5 +109,56 @@ describe('extension', () => {
     assert.ok(pager.render(80).at(-1)!.includes('installed'));
     pager.handleInput('q');
     await run;
+  });
+
+  test('pager upgrade fallback handles failure', async () => {
+    stubFetch(distTags({ foo: '2.0.0' }), registryRoute(registryDoc), releasesRoute(releases));
+    const { pi, handler } = makePi();
+    pi.exec = async () => ({ stdout: '', stderr: 'fallback error', code: 1 });
+    let pager: any;
+    const run = handler()('foo', { hasUI: true, ui: { notify: () => {}, custom: (f: any) => new Promise(r => pager = f({ terminal: { rows: 16, columns: 80 }, requestRender() { } }, { fg: (_c: string, t: string) => t }, {}, r)) } });
+    await new Promise((r) => setTimeout(r, 0));
+    pager.handleInput('u');
+    await new Promise((r) => setTimeout(r, 0));
+    assert.ok(pager.render(80).at(-1)!.includes('fallback error'));
+    pager.handleInput('q');
+    await run;
+  });
+
+  test('pager upgrade catches exceptions', async () => {
+    stubFetch(distTags({ foo: '2.0.0' }), registryRoute(registryDoc), releasesRoute(releases));
+    const { pi, handler } = makePi();
+    pi.exec = async () => { throw new Error('exec boom'); };
+    let pager: any;
+    const run = handler()('foo', { hasUI: true, ui: { notify: () => {}, custom: (f: any) => new Promise(r => pager = f({ terminal: { rows: 16, columns: 80 }, requestRender() { } }, { fg: (_c: string, t: string) => t }, {}, r)) } });
+    await new Promise((r) => setTimeout(r, 0));
+    pager.handleInput('u');
+    await new Promise((r) => setTimeout(r, 0));
+    assert.ok(pager.render(80).at(-1)!.includes('exec boom'));
+    pager.handleInput('q');
+    await run;
+  });
+
+  test('registry unreachable for specific package', async () => {
+    (globalThis as any).fetch = async () => { throw new Error('offline'); };
+    const { handler } = makePi();
+    const { notices, notify } = notifyRecorder();
+    await handler()('foo', { hasUI: false, ui: { notify } });
+    assert.ok(notices[0].includes('registry unreachable'));
+  });
+
+  test('all packages up to date', async () => {
+    stubFetch(distTags({ foo: '1.0.0', '@scope/bar': '2.0.0' }));
+    const { handler } = makePi();
+    const { notices, notify } = notifyRecorder();
+    await handler()(undefined, { hasUI: false, ui: { notify } });
+    assert.ok(notices[0].includes('All stack packages are up to date'));
+  });
+
+  test('changelog fetch failure handled gracefully', async () => {
+    stubFetch(distTags({ foo: '2.0.0' })); // registryRoute omitted, so changelog fetch fails
+    const { calls, handler } = makePi();
+    await handler()('foo', { hasUI: false, ui: { notify: () => {} } });
+    assert.ok(calls.sent[0].content.includes('_changelog fetch failed_'));
   });
 });
