@@ -1,7 +1,7 @@
 {
   "name": "pi-package-updater",
   "version": "0.1.0",
-  "description": "Pi extension: startup update notifier + interactive changelog pager for outdated stack packages",
+  "description": "Pi extension: startup update notifier + interactive changelog reviewer for outdated pi packages",
   "license": "MIT",
   "author": "Noah Clarke",
   "keywords": [
@@ -23,7 +23,10 @@
     "test": "NODE_PATH=tests/stubs npx tsx --test tests/*.test.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "release": "changeset publish"
   },
   "pi": {
     "extensions": [
@@ -43,12 +46,17 @@
     }
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "@eslint/js": "9.39.5",
     "@types/node": "26.1.1",
     "eslint": "9.39.5",
     "globals": "17.7.0",
+    "prettier": "^3.9.5",
     "tsx": "4.23.0",
-    "typescript": "6.0.0",
+    "typescript": "^6.0.0",
     "typescript-eslint": "8.64.0"
+  },
+  "overrides": {
+    "human-id": "1.0.2"
   }
 }
