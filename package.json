@@ -20,7 +20,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "NODE_PATH=tests/stubs npx tsx --test tests/updates.test.ts"
+    "test": "NODE_PATH=tests/stubs npx tsx --test tests/*.test.ts"
   },
   "pi": {
     "extensions": [
