@@ -47,7 +47,7 @@ describe('extension', () => {
     const { sessionStart } = makePi();
     const { notices, notify } = notifyRecorder();
     sessionStart()({ reason: 'startup' }, { hasUI: true, ui: { notify } });
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((response) => setTimeout(response, 0));
     assert.equal(notices.length, 1);
     assert.ok(notices[0].includes('foo 1.0.0→1.2.0'));
     assert.ok(notices[0].includes('/updates to review'));
@@ -92,7 +92,7 @@ describe('extension', () => {
         custom: (factory: any) =>
           new Promise((resolve) => {
             pager = factory(
-              { terminal: { rows: 16, columns: 80 }, requestRender() {} },
+              { terminal: { rows: 16, columns: 80 }, requestRender() { } },
               { fg: (_c: string, t: string) => t },
               {},
               resolve,

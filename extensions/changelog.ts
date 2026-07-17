@@ -5,8 +5,10 @@ import { getJSON, type Outdated } from './types.ts';
 import { newer } from './packages.ts';
 
 const getRepoParts = (url: string) => {
-  const m = url.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?(?:#.*)?$/);
-  return m ? [m[1], m[2]] : null;
+  const match = url.match(
+    /github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?(?:#.*)?$/,
+  );
+  return match ? [match[1], match[2]] : null;
 };
 
 export async function changelogFor(outdatedPackage: Outdated): Promise<string> {
@@ -39,14 +41,21 @@ export async function changelogFor(outdatedPackage: Outdated): Promise<string> {
 
   const validMatches = (
     Array.isArray(githubReleases) ? githubReleases : []
-  ).flatMap((r) => {
-    const t = String(r.tag_name || '');
+  ).flatMap((releaseRecord) => {
+    const tagName = String(releaseRecord.tag_name || '');
     return intermediateVersions
-      .filter((v) => t.endsWith(v))
-      .map((v) => [v, String(r.body || '').trim(), t] as const);
+      .filter((intermediateVersion) => tagName.endsWith(intermediateVersion))
+      .map(
+        (intermediateVersion) =>
+          [
+            intermediateVersion,
+            String(releaseRecord.body || '').trim(),
+            tagName,
+          ] as const,
+      );
   });
   const releaseNotesByVersion = Object.fromEntries(
-    validMatches.map(([v, b]) => [v, b]),
+    validMatches.map(([versionKey, releaseBody]) => [versionKey, releaseBody]),
   );
   const derivedTagPrefix = validMatches[0]
     ? validMatches[0][2].slice(0, -validMatches[0][0].length)

@@ -21,20 +21,34 @@ export function newer(latestVersion: string, currentVersion: string): boolean {
 }
 
 export function installedPackages(): Array<{ name: string; version: string }> {
-  const settingsData = JSON.parse(
-    fs.readFileSync(`${AGENT}/settings.json`, 'utf8'),
-  );
+  const readJSON = (path: string) => {
+    try {
+      return JSON.parse(fs.readFileSync(path, 'utf8'));
+    } catch {
+      return null;
+    }
+  };
+
+  const settingsData = readJSON(`${AGENT}/settings.json`);
+  if (!settingsData) return [];
+
   return (settingsData.packages ?? []).flatMap(
-    (p: string | { source: string }) => {
-      const src = typeof p === 'string' ? p : p.source;
-      if (!src.startsWith('npm:')) return [];
-      const at = src.lastIndexOf('@');
-      const name = at > 3 ? src.slice(4, at) : src.slice(4);
-      const pkgPath = `${AGENT}/npm/node_modules/${name}/package.json`;
-      if (!fs.existsSync(pkgPath)) return [];
-      return [
-        { name, version: JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version },
-      ];
+    (packageConfig: string | { source: string }) => {
+      const packageSource =
+        typeof packageConfig === 'string'
+          ? packageConfig
+          : packageConfig.source;
+      if (!packageSource.startsWith('npm:')) return [];
+      const lastAtIndex = packageSource.lastIndexOf('@');
+      const packageName =
+        lastAtIndex > 3
+          ? packageSource.slice(4, lastAtIndex)
+          : packageSource.slice(4);
+      const packageData = readJSON(
+        `${AGENT}/npm/node_modules/${packageName}/package.json`,
+      );
+      if (!packageData?.version) return [];
+      return [{ name: packageName, version: packageData.version }];
     },
   );
 }

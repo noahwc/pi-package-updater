@@ -62,6 +62,7 @@ export const getJSON = (
   timeoutMs: number,
   headers?: Record<string, string>,
 ): Promise<any> =>
-  fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) }).then((r) =>
-    r.json(),
-  );
+  fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) }).then((response) => {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  });

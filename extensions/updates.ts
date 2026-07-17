@@ -40,20 +40,39 @@ export default function (pi: ExtensionAPI) {
   // min-release-age guard rejects young exact pins with ETARGET; the pin
   // is the verified control, so bypass it once on failure.
   // Returns an error string, or undefined on success.
-  const upgradePackage = async (o: Outdated): Promise<string | undefined> => {
-    const spec = `npm:${o.name}@${o.latest}`;
-    const initial = await pi.exec('pi', ['install', spec], { timeout: 180000 });
-    const res =
-      initial.code === 0
-        ? initial
-        : await pi.exec(
-            'env',
-            ['npm_config_min_release_age=0', 'pi', 'install', spec],
-            { timeout: 180000 },
-          );
-    if (res.code !== 0)
-      return `install failed — ${(res.stderr || res.stdout).trim().split('\n').pop()}`;
-    cache.current = (cache.current ?? []).filter((c) => c.name !== o.name);
+  const upgradePackage = async (
+    outdatedPackage: Outdated,
+  ): Promise<string | undefined> => {
+    try {
+      const packageSpecifier = `npm:${outdatedPackage.name}@${outdatedPackage.latest}`;
+      const initialInstallResult = await pi.exec(
+        'pi',
+        ['install', packageSpecifier],
+        {
+          timeout: 180000,
+        },
+      );
+      const finalInstallResult =
+        initialInstallResult.code === 0
+          ? initialInstallResult
+          : await pi.exec(
+              'env',
+              [
+                'npm_config_min_release_age=0',
+                'pi',
+                'install',
+                packageSpecifier,
+              ],
+              { timeout: 180000 },
+            );
+      if (finalInstallResult.code !== 0)
+        return `install failed — ${(finalInstallResult.stderr || finalInstallResult.stdout).trim().split('\n').pop()}`;
+      cache.current = (cache.current ?? []).filter(
+        (cachedPackage) => cachedPackage.name !== outdatedPackage.name,
+      );
+    } catch (e: any) {
+      return `install failed — ${e.message}`;
+    }
   };
 
   pi.registerCommand('updates', {
@@ -64,28 +83,40 @@ export default function (pi: ExtensionAPI) {
 
       const getOutdatedList = async (): Promise<Outdated[] | null> => {
         if (requestedPackageName) {
-          const pkg = installedPackages().find(
-            (p) =>
-              p.name === requestedPackageName ||
-              p.name.endsWith(`/${requestedPackageName}`),
+          const matchedPackage = installedPackages().find(
+            (packageItem) =>
+              packageItem.name === requestedPackageName ||
+              packageItem.name.endsWith(`/${requestedPackageName}`),
           );
-          if (!pkg) {
+          if (!matchedPackage) {
             ctx.ui.notify(
               `${requestedPackageName}: not an installed stack package`,
               'warning',
             );
             return null;
           }
-          const latest = await latestOf(pkg.name);
-          if (!latest) {
-            ctx.ui.notify(`${pkg.name}: registry unreachable`, 'warning');
+          const latestVersion = await latestOf(matchedPackage.name);
+          if (!latestVersion) {
+            ctx.ui.notify(
+              `${matchedPackage.name}: registry unreachable`,
+              'warning',
+            );
             return null;
           }
-          if (!newer(latest, pkg.version)) {
-            ctx.ui.notify(`${pkg.name} ${pkg.version} is up to date`, 'info');
+          if (!newer(latestVersion, matchedPackage.version)) {
+            ctx.ui.notify(
+              `${matchedPackage.name} ${matchedPackage.version} is up to date`,
+              'info',
+            );
             return null;
           }
-          return [{ name: pkg.name, current: pkg.version, latest }];
+          return [
+            {
+              name: matchedPackage.name,
+              current: matchedPackage.version,
+              latest: latestVersion,
+            },
+          ];
         }
         cache.current ??= await checkOutdated();
         if (!cache.current.length) {
