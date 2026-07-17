@@ -1,6 +1,6 @@
 {
   "name": "pi-package-updater",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Startup update notifier + interactive changelog reviewer for outdated pi packages",
   "license": "MIT",
   "author": "Noah Clarke",
