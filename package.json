@@ -17,7 +17,8 @@
     "LICENSE"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "test": "NODE_PATH=tests/stubs npx tsx --test tests/*.test.ts",
