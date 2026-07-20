@@ -1,5 +1,5 @@
 // Shared type definitions and runtime dependencies for pi-package-updater.
-// Every other module in src/ imports from here; this file has no
+// Every other module in extensions/ imports from here; this file has no
 // intra-project imports.
 
 import * as fs from 'node:fs';

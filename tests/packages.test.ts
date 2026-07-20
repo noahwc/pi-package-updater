@@ -4,7 +4,7 @@ import { setupEnvironment, stubFetch, distTags } from './setup.ts';
 
 setupEnvironment();
 declare const require: (id: string) => any;
-const packages = require('../src/packages.ts');
+const packages = require('../extensions/packages.ts');
 const { newer, installedPackages, latestOf, checkOutdated } = packages;
 
 describe('newer', () => {

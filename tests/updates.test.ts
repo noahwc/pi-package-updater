@@ -12,7 +12,7 @@ import {
 
 setupEnvironment();
 declare const require: (id: string) => any;
-const entrypoint = require('../src/updates.ts');
+const entrypoint = require('../extensions/updates.ts');
 const register = entrypoint.default;
 
 type Sent = { customType: string; content: string; display: boolean };

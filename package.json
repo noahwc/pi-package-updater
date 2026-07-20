@@ -16,7 +16,7 @@
     "changelog"
   ],
   "files": [
-    "src",
+    "extensions",
     "README.md",
     "LICENSE"
   ],
@@ -36,7 +36,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/updates.ts"
+      "./extensions/updates.ts"
     ]
   },
   "peerDependencies": {

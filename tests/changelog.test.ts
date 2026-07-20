@@ -11,7 +11,7 @@ import {
 } from './setup.ts';
 
 declare const require: (id: string) => any;
-const changelog = require('../src/changelog.ts');
+const changelog = require('../extensions/changelog.ts');
 const { changelogFor } = changelog;
 
 describe('changelogFor', () => {
